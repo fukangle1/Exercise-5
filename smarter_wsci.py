@@ -21,6 +21,35 @@ state = {
     "wi-fi_check": True
 }
 
+## Create two separated states
+diagnostic_context = {
+    "problem": question,
+    "device": "Windows laptop",
+    "wifi_status": "operational"
+}
+
+report_context = {
+    "total_wifi_cases": 37,
+    "resolved_cases": 29,
+    "unresolved_cases": 8
+}
+
+# use qwen to classify the question
+classify_response = chat(
+    model="qwen3:8b",
+    messages=[
+        {"role": "system", "content": "Classify the user question. Reply with only one word: diagnostic or report."},
+        {"role": "user", "content": question}
+    ]
+)
+
+category = classify_response.message.content.strip().lower()
+
+if "report" in category:
+    state = report_context
+else:
+    state = diagnostic_context
+
 with open("state.json", "w") as file:
     json.dump(
         state,
