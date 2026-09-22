@@ -38,13 +38,32 @@ print(state)
 ## Create the function that takes the student's question, takes some keywords and chooses the relevant files from the knowledge base. Return a list of the selected files.
 ## For example, if the question has the kyeword "print" or "printer", then the function should return the file "knowledge/printer_setup.txt" in a list.
 def select_context(question):
-    pass
+    q = question.lower()
+    selected = []
+    
+    # check the wifi
+    if "wifi" in q or "wi-fi" in q or "network" in q:
+        selected.append("knowledge/wifi_setup.txt")
+    
+    # check the password
+    if "password" in q:
+        selected.append("knowledge/password_changes.txt")
+    
+    # check the status
+    if "status" in q or "operational" in q:
+        selected.append("knowledge/service_status.txt")
+    
+    return selected
 
 
 selected_files = select_context(question)
 
 ## READ SELECTED FILES and add their contents to the context variable.
 context = ""
+for file_path in selected_files:
+    with open(file_path, "r") as f:
+        context += f.read()
+        context += "\n\n"
 
 
 ## 
@@ -53,22 +72,39 @@ context = ""
 ## The response from Qwen should be the compressed context. Store it in a variable called "compressed_context" 
 
 def compress_context(context, question):
-    pass
+    response = chat(
+        model="qwen3:8b",
+        messages=[
+            {"role": "system", "content": "Compress this context. Keep only the stuff that helps answer the question. Keep the important steps."},
+            {"role": "user", "content": "Question:\n" + question + "\n\nContext:\n" + context}
+        ]
+    )
+    return response["message"]["content"]
 
 
+compressed_context = compress_context(context, question)
 
 ## Print the length of the compressed context
 print(len(compressed_context))
 
 ## Now, call Qwen again with the compressed context and the student's question. Store the response in a variable called "response" and print the response from Qwen.
 ## Ensure the model produces a structured output 
-
-
+response = chat(
+    model="qwen3:8b",
+    messages=[
+        {"role": "system", "content": "You are a university IT support assistant. Use ONLY the compressed context and state below to answer the question. Give a clear, step-by-step answer.\n\nCompressed context:\n" + compressed_context + "\n\nState:\n" + json.dumps(state)},
+        {"role": "user", "content": question}
+    ]
+)
 
 
 print(response.message.content)
 
 ## WRITE the above output in an artifact called "state"
+state["answer"] = response.message.content
+
+with open("state.json", "w") as file:
+    json.dump(state, file, indent=2)
 
 ## Update the rest of the code so that it uses the "state" artifact as part of the context. 
 ## It is important to ensure that the model uses only the relevant parts from the "state" artifact and not the entire artifact.
